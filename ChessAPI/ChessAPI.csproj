@@ -4,18 +4,27 @@
         <TargetFramework>net8.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.29" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
         <PackageReference Include="AutoMapper" Version="16.2.0" />
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="BackEnd\Chess\Chess\" />
-      <Folder Include="BackEnd\Chess\Rules\" />
+      <Folder Include="Applications\" />
+      <Folder Include="AutoMapper\" />
+      <Folder Include="Controllers\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="ChessConsole\**" />
+      <Content Remove="ChessConsole\**" />
+      <EmbeddedResource Remove="ChessConsole\**" />
+      <None Remove="ChessConsole\**" />
     </ItemGroup>
 
 </Project>
