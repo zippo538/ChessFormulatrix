@@ -6,18 +6,33 @@ using ChessAPI.Models.Enums;
 using Spectre.Console;
 
 Board board = new();
+GameService gameService = new GameService();
 BoardService.InitializeBoard(board, true);
+TimerService timerService = new TimerService(TimeSpan.FromMinutes(10));
 
+// White Turn
 PieceColor currentTurn = PieceColor.White;
 bool isGameOver = false;
 string? gameResult = null;
-AnsiConsole.MarkupLine("[bold yellow]Custom Chess Board[/]\n");
 
+
+// start timer
+timerService.Start();
+
+timerService.TimeExpired += color =>
+{
+    isGameOver = true;
+    gameResult = $"{color} time out. " +
+                 $"{GameHelper.GetOpponent(color)} wins!";
+};
+
+
+
+AnsiConsole.MarkupLine("[bold yellow]Custom Chess Board[/]\n");
 while (!isGameOver)
 {
-    Console.Clear();
-    DrawBoard(board);
-    Console.WriteLine($"\nTurn: {currentTurn}");
+    GameService.RenderBoard(board, timerService,currentTurn);
+    
 
     if (MovementService.IsKingInCheck(board, currentTurn))
     {
@@ -27,7 +42,7 @@ while (!isGameOver)
     Console.WriteLine("\nSelect piece to move (row col, e.g., '7 4'):");
     Console.Write("> ");
 
-    var fromInput = Console.ReadLine();
+    var fromInput = Console.ReadLine() ;
     if (string.IsNullOrWhiteSpace(fromInput))
         continue;
 
@@ -65,7 +80,7 @@ while (!isGameOver)
     }
 
     Console.Clear();
-    DrawBoard(board, validMoves);
+    gameService.GetDrawBoard(board, validMoves);
     Console.WriteLine($"\nSelected: {piece.Color} {piece.Symbol}");
     Console.WriteLine("Enter destination (row col, or 'x' to cancel):");
     Console.Write("> ");
@@ -103,14 +118,15 @@ while (!isGameOver)
 
     MovementHelper.MovePiece(board, fromTile, toTile);
 
+    timerService.SwitchTurn();
     currentTurn = currentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;
 
-    if (IsCheckmate(board, currentTurn))
+    if (GameService.IsCheckmate(board, currentTurn))
     {
         isGameOver = true;
-        gameResult = $"Checkmate! {GetOpponent(currentTurn)} wins!";
+        gameResult = $"Checkmate! {GameHelper.GetOpponent(currentTurn)} wins!";
     }
-    else if (IsStalemate(board, currentTurn))
+    else if (GameService.IsStalemate(board, currentTurn))
     {
         isGameOver = true;
         gameResult = "Stalemate! Draw.";
@@ -118,100 +134,17 @@ while (!isGameOver)
 }
 
 Console.Clear();
-DrawBoard(board);
+gameService.GetDrawBoard(board);
 Console.WriteLine($"\n{gameResult}");
+timerService.Pause();
+AnsiConsole.WriteLine(
+    $"\nFinal Time - " +
+    $"White: {timerService.WhiteTime:mm\\:ss} | " +
+    $"Black: {timerService.BlackTime:mm\\:ss}"
+);
 Console.WriteLine("\nPress any key to exit...");
 Console.ReadKey();
 
-static void DrawBoard(Board board, IList<Tile>? validMoves = null)
-{
-    AnsiConsole.WriteLine();
-    AnsiConsole.MarkupLine("   [bold]0  1  2  3  4  5  6  7[/]");
 
-    for (int row = 0; row < board.Size; row++)
-    {
-        AnsiConsole.Markup($"[bold]{row}[/] ");
-        for (int col = 0; col < board.Size; col++)
-        {
-            var tile = board.Tiles[row, col];
-            bool isValidMove = validMoves != null && validMoves.Any(m => m.Row == row && m.Column == col);
-            bool isLightSquare = (row + col) % 2 == 0;
-            string bgColor = isLightSquare ? "silver" : "grey23";
-            if (isValidMove)
-            {
-                bgColor = isLightSquare ? "lightgreen" : "green";
-            }
 
-            string cellContent = "   ";
-            string fgColor = "black";
-            if (tile.Piece != null)
-            {
-                cellContent= GetPieceSymbol(tile.Piece);
-                fgColor = tile.Piece.Color == PieceColor.White ? "white" : "black";
-                if (isValidMove) bgColor = "red";
-            }
-            else if (isValidMove)
-            {
-                cellContent = " • ";
-                fgColor = "blue";
-            }
-            AnsiConsole.Markup($"[{fgColor} on {bgColor}]{cellContent}[/]");
-            
-        }
-        AnsiConsole.MarkupLine($" [bold]{row}[/]");
-    }
 
-    AnsiConsole.MarkupLine("   [bold]0  1  2  3  4  5  6  7[/]\n");
-}
-
-static string GetPieceSymbol(IPiece piece)
-{
-    return piece.Symbol switch
-    {
-        PieceType.Pawn => piece.Color == PieceColor.White ? " ♙ " : " ♟ ",
-        PieceType.Rook => piece.Color == PieceColor.White ? " ♖ " : " ♜ ",
-        PieceType.Knight => piece.Color == PieceColor.White ? " ♘ " : " ♞ ",
-        PieceType.Bishop => piece.Color == PieceColor.White ? " ♗ " : " ♝ ",
-        PieceType.Queen => piece.Color == PieceColor.White ? " ♕ " : " ♛ ",
-        PieceType.King => piece.Color == PieceColor.White ? " ♔ " : " ♚ ",
-        _ => "?"
-    };
-}
-
-static bool IsCheckmate(Board board, PieceColor color)
-{
-    if (!MovementService.IsKingInCheck(board, color))
-        return false;
-
-    return !HasAnyValidMove(board, color);
-}
-
-static bool IsStalemate(Board board, PieceColor color)
-{
-    if (MovementService.IsKingInCheck(board, color))
-        return false;
-
-    return !HasAnyValidMove(board, color);
-}
-
-static bool HasAnyValidMove(Board board, PieceColor color)
-{
-    for (int row = 0; row < board.Size; row++)
-    {
-        for (int col = 0; col < board.Size; col++)
-        {
-            var piece = BoardHelper.GetPiece(board, row, col);
-            if (piece == null || piece.Color != color)
-                continue;
-
-            if (piece.GetValidMoves(board).Count > 0)
-                return true;
-        }
-    }
-    return false;
-}
-
-static PieceColor GetOpponent(PieceColor color)
-{
-    return color == PieceColor.White ? PieceColor.Black : PieceColor.White;
-}
