@@ -1,13 +1,15 @@
 using ChessAPI.Models;
 using ChessAPI.Models.Enums;
 using ChessAPI.Models.Interfaces;
+using ChessAPI.Models.Pieces;
 using ChessAPI.Services;
 
 namespace ChessAPI.Helpers;
 
 public class MovementHelper
 {
-    public static void MovePiece(Board board, Tile from, Tile to)
+    public static void MovePiece(Board board, Tile from, Tile to,
+        Action<Tile>? onPromotion = null)
     {
         ArgumentNullException.ThrowIfNull(board);
         ArgumentNullException.ThrowIfNull(from);
@@ -27,7 +29,6 @@ public class MovementHelper
         // -----------------------------------------
         bool isEnpassant = movedPiece.Symbol == PieceType.Pawn && from.Column != to.Column && to.Piece == null;
         if (isEnpassant)
-
         {
 
             var enPassantTile = BoardHelper.GetTile(board, from.Row, to.Column);
@@ -84,10 +85,6 @@ public class MovementHelper
         }
         }
         
-        
-        // -----------------------------------------
-        // PROMOTION
-        // -----------------------------------------
 
         // 1. Simpan riwayat pergerakan ke Stack sebelum papan diubah
         board.MoveStack.Push(new MoveHistory(
@@ -107,6 +104,20 @@ public class MovementHelper
         
         // 5. HasMoved true
         movedPiece.HasMoved = true;
+
+        // -----------------------------------------
+        // PROMOTION
+        // -----------------------------------------
+        bool isPromotion = movedPiece.Symbol == PieceType.Pawn && 
+                           ((movedPiece.Color == PieceColor.White && to.Row == 0) || 
+                            (movedPiece.Color == PieceColor.Black && to.Row == 7));
+        
+        // Jika pawn mencapai baris terakhir, panggil callback agar caller
+        // dapat menampilkan UI pilihan piece dan memanggil SpecialMove.Promote().
+        if (isPromotion)
+        {
+            onPromotion?.Invoke(to);
+        }
 
         // 6. Jika bidak yang dipindah adalah Raja, perbarui status lokasinya di Board
         UpdateKingPosition(board, movedPiece);
@@ -130,28 +141,29 @@ public class MovementHelper
             board.BlackKingLocation = newLocation;
         }
     }
-    // check specific tile 
-    public static bool IsSquareAttacked(Board board, Tile targetTile, PieceColor defendingColor)
+    public static void Promote(Tile promotionTile, PieceType chosenType)
     {
-        var opponentColor = PieceHelper.GetOpponentColor(defendingColor);
+        if (promotionTile.Piece == null)
+            throw new InvalidOperationException("Tidak ada piece di promotionTile.");
 
-        foreach (var tile in board.Tiles)
+        var color = promotionTile.Piece.Color;
+        int row   = promotionTile.Row;
+        int col   = promotionTile.Column;
+
+        Piece newPiece = chosenType switch
         {
-            var attacker = tile.Piece;
-            if (attacker == null || attacker.Color != opponentColor)
-                continue;
+            PieceType.Queen  => new Queen(color, row, col)  { HasMoved = true },
+            PieceType.Rook   => new Rook(color, row, col)   { HasMoved = true },
+            PieceType.Bishop => new Bishop(color, row, col) { HasMoved = true },
+            PieceType.Knight => new Knight(color, row, col) { HasMoved = true },
+            _ => throw new ArgumentException(
+                $"Piece type '{chosenType}' tidak valid untuk promosi. " +
+                "Pilih: Queen, Rook, Bishop, atau Knight.")
+        };
 
-            // Generate serangan dari lawan
-            var attackedTiles = MovementService.GetGenerateAttackSquares(board, attacker);
-
-            // Jika targetTile ada di dalam daftar serangan, berarti petak tersebut tidak aman
-            if (attackedTiles.Any(attacked => attacked.Row == targetTile.Row && attacked.Column == targetTile.Column))
-            {
-                return true;
-            }
-        }
-        return false;
+        promotionTile.Piece = newPiece;
     }
+    
 
    
 }

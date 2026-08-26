@@ -343,45 +343,7 @@ public static class MovementService
             direction,
             1,
             validMoves);
-
-
-         // -----------------------------------------
-         // EN PASSANT
-         // -----------------------------------------
-         if (board.MoveStack.Count > 0)
-         {
-             var lastMove = board.MoveStack.Peek();
-             Console.WriteLine($"[DEBUG] Langkah Terakhir: {lastMove.From.Row},{lastMove.From.Column} -> {lastMove.To.Row},{lastMove.To.Column}");
-             // 1. check last move with 2 tile
-             if (Math.Abs(lastMove.From.Row - lastMove.To.Row) == 2)
-             {
-                 var lastMoveTIle = BoardHelper.GetTile(board,lastMove.To.Row,lastMove.To.Column);
-                 //2. check jump moves piece against
-                 if (lastMoveTIle?.Piece != null && 
-                     lastMoveTIle.Piece.Symbol == PieceType.Pawn &&
-                     lastMoveTIle.Piece.Color != pawn.Color)
-                 {
-                     //3. check piece against there  a side player
-                     if (lastMove.To.Row == pawn.CurrentLocation.Row &&
-                         Math.Abs(lastMove.To.Column - pawn.CurrentLocation.Column) == 1)
-                     {
-                         // target en passant behind piece against
-                         int epRow = pawn.CurrentLocation.Row + direction ;
-                         int epCol = lastMove.To.Column;
-
-                         if (BoardHelper.IsInBounds(board, epRow, epCol))
-                         {
-                             var epTile = BoardHelper.GetTile(board, epRow, epCol);
-                             if (epTile != null)
-                             {
-                                 validMoves.Add(epTile);
-                             }
-                         }
-                     }
-                 }
-             }
-         }
-
+        
         return validMoves;
     }
 
@@ -832,8 +794,8 @@ public static class MovementService
             if (fTile?.Piece == null && gTile?.Piece == null)
             {
                 // 4 & 5 petak yang dilewati dan dituju tidak diserang
-                if(!MovementHelper.IsSquareAttacked(board,fTile!,king.Color) && 
-                   !MovementHelper.IsSquareAttacked(board,gTile!,king.Color))
+                if(!IsSquareAttacked(board,fTile!,king.Color) && 
+                   !IsSquareAttacked(board,gTile!,king.Color))
                     castlingMoves.Add(gTile!);
             }
         }
@@ -854,8 +816,8 @@ public static class MovementService
             {
                 // Syarat 4 & 5: Petak yang dilewati (c dan d) dan dituju (c) tidak boleh diserang.
                 // Catatan: Petak b tidak dilewati oleh Raja, jadi tidak perlu dicek serangannya.
-                if (!MovementHelper.IsSquareAttacked(board, dTile!, king.Color) && 
-                    !MovementHelper.IsSquareAttacked(board, cTile!, king.Color))
+                if (!IsSquareAttacked(board, dTile!, king.Color) && 
+                    !IsSquareAttacked(board, cTile!, king.Color))
                 {
                     castlingMoves.Add(cTile!); // Tambahkan petak c (kolom 2) sebagai langkah valid
                 }
@@ -866,10 +828,27 @@ public static class MovementService
     }
     
 
-    public static IList<Tile> GetGenerateAttackSquares(Board board, IPiece piece)
+    // check specific tile 
+    public static bool IsSquareAttacked(Board board, Tile targetTile, PieceColor defendingColor)
     {
-        return GenerateAttackSquares(board, piece);
+        var opponentColor = PieceHelper.GetOpponentColor(defendingColor);
+
+        foreach (var tile in board.Tiles)
+        {
+            var attacker = tile.Piece;
+            if (attacker == null || attacker.Color != opponentColor)
+                continue;
+
+            // Generate serangan dari lawan
+            var attackedTiles = GenerateAttackSquares(board, attacker);
+
+            // Jika targetTile ada di dalam daftar serangan, berarti petak tersebut tidak aman
+            if (attackedTiles.Any(attacked => attacked.Row == targetTile.Row && attacked.Column == targetTile.Column))
+            {
+                return true;
+            }
+        }
+        return false;
     }
-    
  
 }

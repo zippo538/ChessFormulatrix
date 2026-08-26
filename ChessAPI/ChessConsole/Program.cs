@@ -115,7 +115,40 @@ while (!isGameOver)
         continue;
     }
 
-    MovementHelper.MovePiece(board, fromTile, toTile);
+    MovementHelper.MovePiece(board, fromTile, toTile, promotionTile =>
+    {
+        // Tampilkan papan terlebih dahulu agar user bisa melihat posisi pawn
+        Console.Clear();
+        gameService.GetDrawBoard(board);
+
+        // Prompt pilihan promosi menggunakan Spectre.Console
+        var choice = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"\n[bold yellow]♟ PROMOTION![/] " +
+                       $"[bold]{fromTile.Piece?.Color}[/] Pawn mencapai baris akhir!\n" +
+                       "Pilih piece untuk promosi:")
+                .AddChoices(
+                    "♕ Queen",
+                    "♖ Rook",
+                    "♗ Bishop",
+                    "♘ Knight"
+                )
+        );
+
+        PieceType chosenType = choice switch
+        {
+            "♕ Queen"  => PieceType.Queen,
+            "♖ Rook"   => PieceType.Rook,
+            "♗ Bishop" => PieceType.Bishop,
+            "♘ Knight" => PieceType.Knight,
+            _           => PieceType.Queen   // fallback (tidak akan terjadi)
+        };
+
+        MovementHelper.Promote(promotionTile, chosenType);
+
+        AnsiConsole.MarkupLine(
+            $"[green]Pawn berhasil dipromosikan menjadi [bold]{chosenType}[/]![/]");
+    });
 
     timerService.SwitchTurn();
     currentTurn = currentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;
@@ -129,6 +162,11 @@ while (!isGameOver)
     {
         isGameOver = true;
         gameResult = "Stalemate! Draw.";
+    }
+    else if (timerService.BlackTime == TimeSpan.Zero || timerService.WhiteTime == TimeSpan.Zero)
+    {
+        isGameOver = true;
+        gameResult = $"Time Is Over! Draw.";
     }
 }
 
