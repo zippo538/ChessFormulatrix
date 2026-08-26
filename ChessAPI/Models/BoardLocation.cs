@@ -7,19 +7,19 @@ public class BoardLocation
     private const int BoardSize = 8;
             
     public int Row{ get; set; }
-    public int Columns { get; set; }        
+    public int Column { get; set; }        
     
     private static bool IsRange(int position) => position >= 1 && position <= BoardSize;
 
-    public BoardLocation(int row, int columns)
+    public BoardLocation(int row, int column)
     {
         Row = row;
-        Columns = columns;
+        Column = column;
     }
 
     [JsonConstructor]
     public BoardLocation(){}
     
-    public override string ToString() => $"({Row}, {Columns})";
+    public override string ToString() => $"({Row}, {Column})";
 
 }

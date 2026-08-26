@@ -28,7 +28,10 @@ public class Knight : Piece
 
     public override Piece Clone()
     {
-        return new Knight(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Columns);
+        return new Knight(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Column)
+        {
+            HasMoved = this.HasMoved
+        };
     }
     
 }

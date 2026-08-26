@@ -55,7 +55,6 @@ while (!isGameOver)
         Console.ReadKey();
         continue;
     }
-
     var piece = BoardHelper.GetPiece(board, fromRow, fromCol);
     if (piece == null)
     {

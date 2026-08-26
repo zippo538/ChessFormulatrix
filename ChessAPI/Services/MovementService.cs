@@ -117,7 +117,7 @@ public static class MovementService
                 rowStep;
 
             int col =
-                piece.CurrentLocation.Columns +
+                piece.CurrentLocation.Column +
                 colStep;
 
             /*
@@ -187,7 +187,7 @@ public static class MovementService
                 direction[0];
 
             int col =
-                piece.CurrentLocation.Columns +
+                piece.CurrentLocation.Column +
                 direction[1];
 
             if (!BoardHelper.IsInBounds(board,row, col))
@@ -221,7 +221,6 @@ public static class MovementService
     // =========================================================
     // KING
     // =========================================================
-
     private static IList<Tile> GenerateKingMoves(
         Board board,
         IPiece king)
@@ -232,21 +231,15 @@ public static class MovementService
                 king,
                 King.MoveTemplates);
 
-        /*
-         * Castling belum dimasukkan di sini.
-         *
-         * Bisa ditambahkan nanti:
-         *
-         * - king belum pernah bergerak
-         * - rook belum pernah bergerak
-         * - path kosong
-         * - king tidak sedang check
-         * - king tidak melewati attacked square
-         */
+        //castling
+        var castlingMoves = GenerateCastlingMoves(board, king);
+        foreach (var move in castlingMoves)
+        {
+            moves.Add(move);
+        }
 
         return moves;
     }
-
 
     // =========================================================
     // PAWN
@@ -278,7 +271,7 @@ public static class MovementService
             direction;
 
         int column =
-            pawn.CurrentLocation.Columns;
+            pawn.CurrentLocation.Column;
 
         if (BoardHelper.IsInBounds(
                 board,
@@ -320,7 +313,7 @@ public static class MovementService
 
                         if (twoStep?.Piece == null)
                         {
-                            validMoves.Add(twoStep);
+                            validMoves.Add(twoStep!);
                         }
                     }
                 }
@@ -352,10 +345,42 @@ public static class MovementService
             validMoves);
 
 
-        /*
-         * En passant belum dimasukkan.
-         * Membutuhkan previous Move.
-         */
+         // -----------------------------------------
+         // EN PASSANT
+         // -----------------------------------------
+         if (board.MoveStack.Count > 0)
+         {
+             var lastMove = board.MoveStack.Peek();
+             Console.WriteLine($"[DEBUG] Langkah Terakhir: {lastMove.From.Row},{lastMove.From.Column} -> {lastMove.To.Row},{lastMove.To.Column}");
+             // 1. check last move with 2 tile
+             if (Math.Abs(lastMove.From.Row - lastMove.To.Row) == 2)
+             {
+                 var lastMoveTIle = BoardHelper.GetTile(board,lastMove.To.Row,lastMove.To.Column);
+                 //2. check jump moves piece against
+                 if (lastMoveTIle?.Piece != null && 
+                     lastMoveTIle.Piece.Symbol == PieceType.Pawn &&
+                     lastMoveTIle.Piece.Color != pawn.Color)
+                 {
+                     //3. check piece against there  a side player
+                     if (lastMove.To.Row == pawn.CurrentLocation.Row &&
+                         Math.Abs(lastMove.To.Column - pawn.CurrentLocation.Column) == 1)
+                     {
+                         // target en passant behind piece against
+                         int epRow = pawn.CurrentLocation.Row + direction ;
+                         int epCol = lastMove.To.Column;
+
+                         if (BoardHelper.IsInBounds(board, epRow, epCol))
+                         {
+                             var epTile = BoardHelper.GetTile(board, epRow, epCol);
+                             if (epTile != null)
+                             {
+                                 validMoves.Add(epTile);
+                             }
+                         }
+                     }
+                 }
+             }
+         }
 
         return validMoves;
     }
@@ -373,7 +398,7 @@ public static class MovementService
             direction;
 
         int col =
-            pawn.CurrentLocation.Columns +
+            pawn.CurrentLocation.Column +
             columnOffset;
 
         if (!BoardHelper.IsInBounds(board,row, col))
@@ -427,7 +452,7 @@ public static class MovementService
                 BoardHelper.GetTile(
                     tempBoard,
                     piece.CurrentLocation.Row,
-                    piece.CurrentLocation.Columns);
+                    piece.CurrentLocation.Column);
 
             var to =
                 BoardHelper.GetTile(
@@ -478,7 +503,7 @@ public static class MovementService
                 : board.BlackKingLocation;
 
         var opponentColor =
-            GetOpponentColor(
+            PieceHelper.GetOpponentColor(
                 kingColor);
 
         foreach (var tile in board.Tiles)
@@ -514,7 +539,7 @@ public static class MovementService
                         attacked.Row ==
                         kingLocation.Row &&
                         attacked.Column ==
-                        kingLocation.Columns))
+                        kingLocation.Column))
             {
                 return true;
             }
@@ -597,10 +622,10 @@ public static class MovementService
             direction;
 
         int leftColumn =
-            pawn.CurrentLocation.Columns - 1;
+            pawn.CurrentLocation.Column - 1;
 
         int rightColumn =
-            pawn.CurrentLocation.Columns + 1;
+            pawn.CurrentLocation.Column + 1;
 
 
         if (BoardHelper.IsInBounds(
@@ -658,7 +683,7 @@ public static class MovementService
                 direction[0];
 
             int col =
-                piece.CurrentLocation.Columns +
+                piece.CurrentLocation.Column +
                 direction[1];
 
             if (!BoardHelper.IsInBounds(board,row, col))
@@ -697,7 +722,7 @@ public static class MovementService
                 direction[0];
 
             int col =
-                piece.CurrentLocation.Columns +
+                piece.CurrentLocation.Column +
                 direction[1];
 
             while (BoardHelper.IsInBounds(
@@ -773,16 +798,78 @@ public static class MovementService
                 move.Column == to.Column);
     }
 
-
+    
     // =========================================================
-    // COLOR HELPER
+    // CASTLING 
     // =========================================================
-
-    private static PieceColor GetOpponentColor(
-        PieceColor color)
+    private static IList<Tile> GenerateCastlingMoves(Board board, IPiece king)
     {
-        return color == PieceColor.White
-            ? PieceColor.Black
-            : PieceColor.White;
+        var castlingMoves = new List<Tile>();
+        
+        // 1. king belum pernah bergerak
+        if (king.HasMoved) 
+            return castlingMoves;
+        // 2. king tidak kondisi check
+        if (IsKingInCheck(board, king.Color))
+        {
+            return castlingMoves;
+        }
+
+        int row = king.CurrentLocation.Row;
+        
+        // ==========================================
+        // KINGSIDE CASTLING (Rokade Pendek - Sayap Raja)
+        // Mengecek ke arah kanan (kolom 5, 6, dan Benteng di kolom 7)
+        // ==========================================
+        var kingsideRookTile = BoardHelper.GetTile(board, row, 7);
+        var kingsideRook = kingsideRookTile?.Piece;
+
+        if (kingsideRook != null && kingsideRook.Symbol == PieceType.Rook && !kingsideRook.HasMoved)
+        {
+            // 3. path harus kosong (kolom 5 dan 6) 
+            var fTile = BoardHelper.GetTile(board, row, 5);
+            var gTile = BoardHelper.GetTile(board, row, 6);
+            if (fTile?.Piece == null && gTile?.Piece == null)
+            {
+                // 4 & 5 petak yang dilewati dan dituju tidak diserang
+                if(!MovementHelper.IsSquareAttacked(board,fTile!,king.Color) && 
+                   !MovementHelper.IsSquareAttacked(board,gTile!,king.Color))
+                    castlingMoves.Add(gTile!);
+            }
+        }
+        // ==========================================
+        // QUEENSIDE CASTLING (Rokade Panjang - Sayap Ratu)
+        // Mengecek ke arah kiri (kolom 1, 2, 3, dan Benteng di kolom 0)
+        // ==========================================
+        var queensideRookTile = BoardHelper.GetTile(board, row, 0);
+        var queensideRook = queensideRookTile?.Piece;
+
+        if (queensideRook != null && queensideRook.Symbol == PieceType.Rook && !queensideRook.HasMoved)
+        {
+            var bTile = BoardHelper.GetTile(board, row, 1);
+            var cTile = BoardHelper.GetTile(board, row, 2);
+            var dTile = BoardHelper.GetTile(board, row, 3);
+             // 3. path harus kosong (kolom 1,2, dan 3)
+            if (bTile?.Piece == null && cTile?.Piece == null && dTile?.Piece == null)
+            {
+                // Syarat 4 & 5: Petak yang dilewati (c dan d) dan dituju (c) tidak boleh diserang.
+                // Catatan: Petak b tidak dilewati oleh Raja, jadi tidak perlu dicek serangannya.
+                if (!MovementHelper.IsSquareAttacked(board, dTile!, king.Color) && 
+                    !MovementHelper.IsSquareAttacked(board, cTile!, king.Color))
+                {
+                    castlingMoves.Add(cTile!); // Tambahkan petak c (kolom 2) sebagai langkah valid
+                }
+            }
+        }
+
+        return castlingMoves;
     }
+    
+
+    public static IList<Tile> GetGenerateAttackSquares(Board board, IPiece piece)
+    {
+        return GenerateAttackSquares(board, piece);
+    }
+    
+ 
 }

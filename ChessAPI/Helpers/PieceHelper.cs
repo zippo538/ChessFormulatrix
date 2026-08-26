@@ -2,7 +2,7 @@ using ChessAPI.Models.Enums;
 
 namespace ChessAPI.Helpers;
 
-public class ToCharHelper
+public class PieceHelper
 {
     public static char ToCharPiece(PieceType pieceType)
     {
@@ -25,5 +25,12 @@ public class ToCharHelper
             PieceColor.White => 'w',
             _ => ' ' 
         };
+    }
+    public static PieceColor GetOpponentColor(
+        PieceColor color)
+    {
+        return color == PieceColor.White
+            ? PieceColor.Black
+            : PieceColor.White;
     }
 }

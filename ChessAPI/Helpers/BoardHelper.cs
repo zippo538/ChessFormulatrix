@@ -29,10 +29,10 @@ public  class BoardHelper
         ArgumentNullException.ThrowIfNull(piece);
         var location = piece.CurrentLocation;
 
-        if (!IsInBounds(board, location.Row, location.Columns))
+        if (!IsInBounds(board, location.Row, location.Column))
             throw new ArgumentOutOfRangeException(nameof(piece), "Piece position is outside the board.");
 
-        board.Tiles[location.Row, location.Columns].Piece = piece;
+        board.Tiles[location.Row, location.Column].Piece = piece;
         MovementHelper.UpdateKingPosition(board, piece);
     }
     public static int EvaluateBoard(Board board)
@@ -91,7 +91,7 @@ public  class BoardHelper
     {
         foreach (Tile tile in board.Tiles)
         {
-            if (tile.Row == piece.CurrentLocation.Row && tile.Column == piece.CurrentLocation.Columns)
+            if (tile.Row == piece.CurrentLocation.Row && tile.Column == piece.CurrentLocation.Column)
                 return tile;
         }
         return null;
@@ -114,8 +114,10 @@ public  class BoardHelper
             }
         }
 
-        copy.WhiteKingLocation = new BoardLocation(originalBoard.WhiteKingLocation.Row, originalBoard.WhiteKingLocation.Columns);
-        copy.BlackKingLocation = new BoardLocation(originalBoard.BlackKingLocation.Row, originalBoard.BlackKingLocation.Columns);
+        copy.WhiteKingLocation = new BoardLocation(originalBoard.WhiteKingLocation.Row, originalBoard.WhiteKingLocation.Column);
+        copy.BlackKingLocation = new BoardLocation(originalBoard.BlackKingLocation.Row, originalBoard.BlackKingLocation.Column);
+        
+        copy.MoveStack = new Stack<MoveHistory>(originalBoard.MoveStack.Reverse());
 
         return copy;
     }

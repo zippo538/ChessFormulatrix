@@ -28,6 +28,9 @@ public class Queen : Piece
 
     public override Piece Clone()
     {
-        return new Queen(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Columns);
+        return new Queen(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Column)
+        {
+            HasMoved = this.HasMoved
+        };
     }      
 }

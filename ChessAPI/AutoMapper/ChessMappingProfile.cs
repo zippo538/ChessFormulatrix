@@ -13,7 +13,7 @@ public class ChessMappingProfile : Profile
         // BoardLocation -> LocationDto
         CreateMap<BoardLocation, BoardDto.LocationDto>()
             .ForMember(dest => dest.Row, opt => opt.MapFrom(src => src.Row))
-            .ForMember(dest => dest.Column, opt => opt.MapFrom(src => src.Columns));
+            .ForMember(dest => dest.Column, opt => opt.MapFrom(src => src.Column));
 
         // Piece -> PieceDto (record)
         CreateMap<Piece, PieceDto>()
@@ -21,7 +21,7 @@ public class ChessMappingProfile : Profile
             .ForMember(dest => dest.Color, opt => opt.MapFrom(src => src.Color))
             .ForMember(dest => dest.Symbol, opt => opt.MapFrom(src => src.Symbol))
             .ForMember(dest => dest.Row, opt => opt.MapFrom(src => src.CurrentLocation.Row))
-            .ForMember(dest => dest.Column, opt => opt.MapFrom(src => src.CurrentLocation.Columns));
+            .ForMember(dest => dest.Column, opt => opt.MapFrom(src => src.CurrentLocation.Column));
 
         // IPiece -> PieceDto (record)
         CreateMap<IPiece, PieceDto>()
@@ -29,7 +29,7 @@ public class ChessMappingProfile : Profile
             .ForMember(dest => dest.Color, opt => opt.MapFrom(src => src.Color))
             .ForMember(dest => dest.Symbol, opt => opt.MapFrom(src => src.Symbol))
             .ForMember(dest => dest.Row, opt => opt.MapFrom(src => src.CurrentLocation.Row))
-            .ForMember(dest => dest.Column, opt => opt.MapFrom(src => src.CurrentLocation.Columns));
+            .ForMember(dest => dest.Column, opt => opt.MapFrom(src => src.CurrentLocation.Column));
 
         // Tile -> TileDto
         CreateMap<Tile, BoardDto.TileDto>()

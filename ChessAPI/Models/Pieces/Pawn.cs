@@ -23,6 +23,9 @@ public class Pawn : Piece
 
     public override Piece Clone()
     {
-        return new Pawn(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Columns);
+        return new Pawn(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Column)
+        {
+            HasMoved = this.HasMoved
+        };
     }   
 }

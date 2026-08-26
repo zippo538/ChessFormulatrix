@@ -12,6 +12,7 @@ public interface IPiece
     PieceType Symbol { get; }
     
     IList<Tile> GetValidMoves(Board board);
+    bool HasMoved { get; set; }
     
     IPiece Clone();
     

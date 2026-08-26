@@ -7,6 +7,7 @@ public abstract class Piece : IPiece
 {
     private protected BoardLocation _currentLocation;
     private protected PieceType _symbol;
+    private bool _hasMoved = false;
     public PieceColor Color { get; set; }
     public PieceType Symbol
     {
@@ -31,6 +32,11 @@ public abstract class Piece : IPiece
          set =>
             _currentLocation = value
                                ?? throw new ArgumentNullException(nameof(value));
+    }
+    public bool HasMoved 
+    { 
+        get { return _hasMoved; }
+        set { _hasMoved = value; }
     }
     
 

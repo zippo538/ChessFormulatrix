@@ -31,7 +31,10 @@ public class Bishop : Piece
 
     public override Piece Clone()
     {
-        return new Bishop(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Columns);
+        return new Bishop(this.Color, this.CurrentLocation.Row, this.CurrentLocation.Column)
+        {
+            HasMoved = this.HasMoved
+        };
     }
 
 }
