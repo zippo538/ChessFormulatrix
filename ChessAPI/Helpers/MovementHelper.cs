@@ -48,9 +48,11 @@ public class MovementHelper
         // CASTLING (ROKADE)
         // -----------------------------------------
         //KINGSIDE
+        bool isCastling = movedPiece.Symbol == PieceType.King && Math.Abs(from.Column - to.Column) == 2;
+        if (isCastling)
+        {
         int row=  from.Row;
-
-        if (to.Column == 6 || to.Column == 7)
+        if (to.Column == 6 )
         {
             var rookTile = BoardHelper.GetTile(board, row, 7); // Posisi asli Benteng
             var targetRookTile = BoardHelper.GetTile(board, row, 5); // Target Benteng
@@ -79,6 +81,7 @@ public class MovementHelper
                 rook.CurrentLocation = new BoardLocation(row, 3);
                 rook.HasMoved = true;              // Hanguskan hak castling
             }
+        }
         }
         
         
