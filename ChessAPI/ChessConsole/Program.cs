@@ -56,134 +56,151 @@ AnsiConsole.MarkupLine("[bold yellow]Chess Console[/]\n");
 while (!isGameOver)
 {
     GameService.RenderBoard(board, currentTurn);
-    
 
     if (MovementService.IsKingInCheck(board, currentTurn))
     {
         AnsiConsole.MarkupLine("[bold red blink]CHECK![/]");
     }
 
+    Tile? fromTile = null;
+    Tile? toTile = null;
+
     // ==========================================
-    // TAHAP 1: PEMILIHAN BIDAK (FROM)
+    // LOGIKA PERGERAKAN (BOT vs MANUSIA)
     // ==========================================
-    // Kumpulkan semua bidak milik pemain saat ini yang BISA bergerak
-    var movablePieces = new Dictionary<string, IPiece>();
-    for (int r = 0; r < board.Size; r++)
+    if (isVsBot && currentTurn == botColor)
     {
-        for (int c = 0; c < board.Size; c++)
+        // --------------------------------------
+        // JIKA GILIRAN BOT
+        // --------------------------------------
+        AnsiConsole.MarkupLine("[bold yellow]🤖 Bot sedang menganalisis langkah...[/]");
+        Thread.Sleep(800); // Jeda singkat agar terasa alami
+
+        var botMove = botService.GetBestMove(board, currentTurn);
+        fromTile = botMove.From;
+        toTile = botMove.To;
+
+        if (fromTile == null || toTile == null)
         {
-            var p = BoardHelper.GetPiece(board, r, c);
-            
-            if (p != null && p.Color == currentTurn)
+            // Jika bot tidak punya langkah valid
+            break;
+        }
+    }
+    else
+    {
+        // --------------------------------------
+        // JIKA GILIRAN PEMAIN MANUSIA
+        // --------------------------------------
+        var movablePieces = new Dictionary<string, IPiece>();
+        for (int r = 0; r < board.Size; r++)
+        {
+            for (int c = 0; c < board.Size; c++)
             {
-                if (p.GetValidMoves(board).Count > 0)
+                var p = BoardHelper.GetPiece(board, r, c);
+                
+                if (p != null && p.Color == currentTurn)
                 {
-                    // Konversi ke format Catur (misal: A8, E4)
-                    char displayCol = (char)('A' + c);
-                    int displayRow = 8 - r;
-                    
-                    string label = $"{GameHelper.GetPieceSymbol(p)} {p.Symbol} at {displayCol}{displayRow}";
-                    movablePieces[label] = p;
+                    if (p.GetValidMoves(board).Count > 0)
+                    {
+                        char displayCol = (char)('A' + c);
+                        int displayRow = 8 - r;
+                        
+                        string label = $"{GameHelper.GetPieceSymbol(p)} {p.Symbol} at {displayCol}{displayRow}";
+                        movablePieces[label] = p;
+                    }
                 }
             }
         }
-    }
 
-    // Jika tidak ada bidak yang bisa bergerak (Pencegahan error)
-    if (movablePieces.Count == 0) break;
+        if (movablePieces.Count == 0) break;
 
-    // Tampilkan prompt pemilihan bidak
-    var selectedPieceLabel = AnsiConsole.Prompt(
-        new SelectionPrompt<string>()
-            .Title($"\n[bold {currentTurn}]Select piece to move:[/]")
-            .PageSize(10)
-            .HighlightStyle(new Style(foreground: Color.Green))
-            .AddChoices(movablePieces.Keys)
-    );
-
-    // Ambil bidak berdasarkan pilihan pemain
-    var piece = movablePieces[selectedPieceLabel];
-    var validMoves = piece.GetValidMoves(board);
-
-    // ==========================================
-    // TAHAP 2: PEMILIHAN TUJUAN (TO)
-    // ==========================================
-    // Render ulang papan dengan highlight petak tujuan
-    Console.Clear();
-    gameService.GetDrawBoard(board, validMoves);
-
-    var moveOptions = new Dictionary<string, Tile>();
-    var moveLabels = new List<string> { "🔙 Cancel / Back" }; 
-
-    foreach (var tile in validMoves)
-    {
-        // Konversi tujuan ke format Catur
-        char destCol = (char)('A' + tile.Column);
-        int destRow = 8 - tile.Row;
-
-        string label = tile.Piece != null
-            ? $"⚔️ Capture {GameHelper.GetPieceSymbol(tile.Piece)} {tile.Piece.Symbol} at {destCol}{destRow}"
-            : $"➡️ Move to {destCol}{destRow}";
-        
-        moveOptions[label] = tile;
-        moveLabels.Add(label);
-    }
-
-    // Tampilkan prompt pemilihan tujuan
-    var selectedMoveLabel = AnsiConsole.Prompt(
-        new SelectionPrompt<string>()
-            .Title($"\nSelected: [bold yellow]{GameHelper.GetPieceSymbol(piece)} {piece.Symbol}[/]. Choose destination:")
-            .PageSize(10)
-            .HighlightStyle(new Style(foreground: Color.Cyan1))
-            .AddChoices(moveLabels)
-    );
-
-    // Jika user memilih Cancel, ulangi loop dari awal
-    if (selectedMoveLabel == "🔙 Cancel / Back")
-    {
-        continue; 
-    }
-
-    // Dapatkan Tile asal dan tujuan berdasarkan pilihan
-    var fromTile = BoardHelper.GetTile(board, piece.CurrentLocation.Row, piece.CurrentLocation.Column);
-    var toTile = moveOptions[selectedMoveLabel];
-
-    // ==========================================
-    // TAHAP 3: EKSEKUSI PERGERAKAN
-    // ==========================================
-    MovementHelper.MovePiece(board, fromTile!, toTile, promotionTile =>
-    {
-        Console.Clear();
-        gameService.GetDrawBoard(board);
-
-        var choice = AnsiConsole.Prompt(
+        var selectedPieceLabel = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
-                .Title($"\n[bold yellow]♟ PROMOTION![/] " +
-                       $"[bold]{fromTile!.Piece?.Color}[/] Pawn mencapai baris akhir!\n" +
-                       "Pilih piece untuk promosi:")
-                .AddChoices(
-                    "♕ Queen",
-                    "♖ Rook",
-                    "♗ Bishop",
-                    "♘ Knight"
-                )
+                .Title($"\n[bold {currentTurn}]Select piece to move:[/]")
+                .PageSize(10)
+                .HighlightStyle(new Style(foreground: Color.Green))
+                .AddChoices(movablePieces.Keys)
         );
 
-        PieceType chosenType = choice switch
-        {
-            "♕ Queen"  => PieceType.Queen,
-            "♖ Rook"   => PieceType.Rook,
-            "♗ Bishop" => PieceType.Bishop,
-            "♘ Knight" => PieceType.Knight,
-            _           => PieceType.Queen  
-        };
+        var piece = movablePieces[selectedPieceLabel];
+        var validMoves = piece.GetValidMoves(board);
 
-        MovementHelper.Promote(promotionTile, chosenType);
-        AnsiConsole.MarkupLine($"[green]Pawn berhasil dipromosikan menjadi [bold]{chosenType}[/]![/]");
-    });
+        Console.Clear();
+        GameService.RenderBoard(board, currentTurn,validMoves);
+
+        var moveOptions = new Dictionary<string, Tile>();
+        var moveLabels = new List<string> { "🔙 Cancel / Back" }; 
+
+        foreach (var tile in validMoves)
+        {
+            char destCol = (char)('A' + tile.Column);
+            int destRow = 8 - tile.Row;
+
+            string label = tile.Piece != null
+                ? $"⚔️ Capture {GameHelper.GetPieceSymbol(tile.Piece)} {tile.Piece.Symbol} at {destCol}{destRow}"
+                : $"➡️ Move to {destCol}{destRow}";
+            
+            moveOptions[label] = tile;
+            moveLabels.Add(label);
+        }
+
+        var selectedMoveLabel = AnsiConsole.Prompt(
+            new SelectionPrompt<string>()
+                .Title($"\nSelected: [bold yellow]{GameHelper.GetPieceSymbol(piece)} {piece.Symbol}[/]. Choose destination:")
+                .PageSize(10)
+                .HighlightStyle(new Style(foreground: Color.Cyan1))
+                .AddChoices(moveLabels)
+        );
+
+        if (selectedMoveLabel == "🔙 Cancel / Back")
+        {
+            continue; 
+        }
+
+        fromTile = BoardHelper.GetTile(board, piece.CurrentLocation.Row, piece.CurrentLocation.Column);
+        toTile = moveOptions[selectedMoveLabel];
+    }
 
     // ==========================================
-    // TAHAP 4: PERGANTIAN GILIRAN & CEK STATUS
+    // EKSEKUSI PERGERAKAN (PEMAIN / BOT)
+    // ==========================================
+    if (fromTile != null && toTile != null)
+    {
+        MovementHelper.MovePiece(board, fromTile, toTile, promotionTile =>
+        {
+            if (isVsBot && currentTurn == botColor)
+            {
+                // Bot otomatis memilih Queen saat promosi
+                MovementHelper.Promote(promotionTile, PieceType.Queen);
+            }
+            else
+            {
+                Console.Clear();
+                gameService.GetDrawBoard(board);
+
+                var choice = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title($"\n[bold yellow]♟ PROMOTION![/] Pilih piece untuk promosi:")
+                        .AddChoices("♕ Queen", "♖ Rook", "♗ Bishop", "♘ Knight")
+                );
+
+                PieceType chosenType = choice switch
+                {
+                    "♕ Queen"  => PieceType.Queen,
+                    "♖ Rook"   => PieceType.Rook,
+                    "♗ Bishop" => PieceType.Bishop,
+                    "♘ Knight" => PieceType.Knight,
+                    _          => PieceType.Queen  
+                };
+
+                MovementHelper.Promote(promotionTile, chosenType);
+                AnsiConsole.MarkupLine($"[green]Pawn berhasil dipromosikan menjadi [bold]{chosenType}[/]![/]");
+            }
+        });
+    }
+
+    // ==========================================
+    // PERGANTIAN GILIRAN & CEK STATUS
     // ==========================================
     timerService.SwitchTurn();
     currentTurn = currentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;

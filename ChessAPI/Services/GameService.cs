@@ -173,7 +173,7 @@ public class GameService
         DrawBoard(board, validMoves);
     }
     
-    public static void RenderBoard(Board board, PieceColor turn)
+    public static void RenderBoard(Board board, PieceColor turn,IList<Tile>? validMoves = null)
     {
         Console.Clear();
         var figlet = new FigletText("CHESS CONSOLE")
@@ -191,7 +191,7 @@ public class GameService
         grid.AddColumn(); // Kolom 1: Tabel Riwayat
         var historyTable = GameHelper.CreateHistoryMovePieceTable(board.MoveStack);
         
-        DrawBoardSideBySide(board);
+        DrawBoardSideBySide(board,validMoves);
 
         // if (board.MoveStack.Count > 0)
         // {
