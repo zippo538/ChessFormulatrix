@@ -50,5 +50,20 @@ public class GameHelper
             );
         AnsiConsole.Write(table);
     }
+    public static void StartLiveTitleTimer(TimerService timer)
+    {
+        // Menjalankan proses di background thread agar tidak memblokir input terminal
+        Task.Run(async () =>
+        {
+            // Background thread ini akan otomatis mati ketika aplikasi console ditutup
+            while (true) 
+            {
+                Console.Title = $"♔ White: {timer.WhiteTime:mm\\:ss}  |  ♚ Black: {timer.BlackTime:mm\\:ss}  -  Chess Console";
+                await Task.Delay(1000); // Update setiap 1 detik
+            }
+        });
+    }
+
+ 
     
 }

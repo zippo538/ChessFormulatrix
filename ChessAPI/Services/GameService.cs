@@ -10,17 +10,21 @@ public class GameService
     private static void DrawBoard(Board board, IList<Tile>? validMoves = null)
     {
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("   [bold]0  1  2  3  4  5  6  7[/]");
+        // Ubah Header menjadi A sampai H
+        AnsiConsole.MarkupLine("   [bold]A  B  C  D  E  F  G  H[/]");
     
         for (int row = 0; row < board.Size; row++)
         {
-            AnsiConsole.Markup($"[bold]{row}[/] ");
+            // Konversi baris internal (0-7) menjadi baris catur visual (8-1)
+            int displayRow = 8 - row;
+            
+            AnsiConsole.Markup($"[bold]{displayRow}[/] ");
             for (int col = 0; col < board.Size; col++)
             {
                 var tile = board.Tiles[row, col];
                 bool isValidMove = validMoves != null && validMoves.Any(m => m.Row == row && m.Column == col);
                 bool isLightSquare = (row + col) % 2 == 0;
-                string bgColor = isLightSquare ? "silver" : "grey23";
+                string bgColor = isLightSquare ? "silver" : "green";
                 if (isValidMove)
                 {
                     bgColor = isLightSquare ? "lightgreen" : "green";
@@ -39,13 +43,15 @@ public class GameService
                     cellContent = " • ";
                     fgColor = "blue";
                 }
-                AnsiConsole.Markup($"[{fgColor} on {bgColor}]{cellContent}[/]");
+                AnsiConsole.Markup($"[{fgColor} on {bgColor}][bold]{cellContent}[/][/]");
                 
             }
-            AnsiConsole.MarkupLine($" [bold]{row}[/]");
+            // Cetak juga di sisi kanan
+            AnsiConsole.MarkupLine($" [bold]{displayRow}[/]");
         }
     
-        AnsiConsole.MarkupLine("   [bold]0  1  2  3  4  5  6  7[/]\n");
+        // Ubah Footer menjadi A sampai H
+        AnsiConsole.MarkupLine("   [bold]A  B  C  D  E  F  G  H[/]\n");
     }
     public static bool IsCheckmate(Board board, PieceColor color)
     {
@@ -89,11 +95,28 @@ public class GameService
     public static void RenderBoard(Board board, TimerService timer, PieceColor turn)
     {
         Console.Clear();
-        GameHelper.DrawTimerTable(timer,turn);
-        DrawBoard(board);
     
+        // 1. Gambar tabel timer dan papan catur
+        GameHelper.DrawTimerTable(timer, turn);
+        DrawBoard(board);
+
+        // 2. Tentukan lawan main untuk teks status
+        PieceColor opponent = turn == PieceColor.White ? PieceColor.Black : PieceColor.White;
+        string turnColor = turn == PieceColor.White ? "white" : "red";
+
+
+        // 3. Gunakan 'Rule' dengan metode LeftAligned() atau properti yang benar
+        var rule = new Rule($"[{turnColor} bold]► {turn}'s Turn ◄[/]")
+        {
+            Style = Style.Parse(turnColor)
+        };
+
+        AnsiConsole.Write(rule);
+
+        // 4. Tampilkan status waiting menggunakan ikon dan tag markup
         AnsiConsole.MarkupLine(
-            $"\nTurn: [bold]{turn}[/]"
+            $"⏳ [italic]Status:[/] [blink bold green]Waiting for {turn} to move...[/] " +
+            $"[dim]({opponent} is currently waiting)[/]\n"
         );
         
     }

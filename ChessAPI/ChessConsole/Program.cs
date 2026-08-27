@@ -7,7 +7,7 @@ using Spectre.Console;
 
 Board board = new();
 GameService gameService = new GameService();
-BoardService.InitializeBoard(board, true);
+BoardService.InitializeBoard(board);
 TimerService timerService = new TimerService(TimeSpan.FromMinutes(10));
 
 // White Turn
@@ -19,6 +19,11 @@ string? gameResult = null;
 // start timer
 timerService.Start();
 
+// ==========================================
+// LIVE TIMER 
+// ==========================================
+GameHelper.StartLiveTitleTimer(timerService);
+
 timerService.TimeExpired += color =>
 {
     isGameOver = true;
@@ -27,8 +32,7 @@ timerService.TimeExpired += color =>
 };
 
 
-
-AnsiConsole.MarkupLine("[bold yellow]Custom Chess Board[/]\n");
+AnsiConsole.MarkupLine("[bold yellow]Chess Console[/]\n");
 while (!isGameOver)
 {
     GameService.RenderBoard(board, timerService,currentTurn);
@@ -36,96 +40,106 @@ while (!isGameOver)
 
     if (MovementService.IsKingInCheck(board, currentTurn))
     {
-        Console.WriteLine("CHECK!");
+        AnsiConsole.MarkupLine("[bold red blink]CHECK![/]");
     }
 
-    Console.WriteLine("\nSelect piece to move (row col, e.g., '7 4'):");
-    Console.Write("> ");
-
-    var fromInput = Console.ReadLine() ;
-    if (string.IsNullOrWhiteSpace(fromInput))
-        continue;
-
-    var fromParts = fromInput.Split(' ');
-    if (fromParts.Length != 2 ||
-        !int.TryParse(fromParts[0], out int fromRow) ||
-        !int.TryParse(fromParts[1], out int fromCol))
+    // ==========================================
+    // TAHAP 1: PEMILIHAN BIDAK (FROM)
+    // ==========================================
+    // Kumpulkan semua bidak milik pemain saat ini yang BISA bergerak
+    var movablePieces = new Dictionary<string, IPiece>();
+    for (int r = 0; r < board.Size; r++)
     {
-        Console.WriteLine("Invalid input. Press any key...");
-        Console.ReadKey();
-        continue;
-    }
-    var piece = BoardHelper.GetPiece(board, fromRow, fromCol);
-    if (piece == null)
-    {
-        Console.WriteLine("No piece at that position. Press any key...");
-        Console.ReadKey();
-        continue;
+        for (int c = 0; c < board.Size; c++)
+        {
+            var p = BoardHelper.GetPiece(board, r, c);
+            
+            if (p != null && p.Color == currentTurn)
+            {
+                if (p.GetValidMoves(board).Count > 0)
+                {
+                    // Konversi ke format Catur (misal: A8, E4)
+                    char displayCol = (char)('A' + c);
+                    int displayRow = 8 - r;
+                    
+                    string label = $"{GameHelper.GetPieceSymbol(p)} {p.Symbol} at {displayCol}{displayRow}";
+                    movablePieces[label] = p;
+                }
+            }
+        }
     }
 
-    if (piece.Color != currentTurn)
-    {
-        Console.WriteLine("That's not your piece. Press any key...");
-        Console.ReadKey();
-        continue;
-    }
+    // Jika tidak ada bidak yang bisa bergerak (Pencegahan error)
+    if (movablePieces.Count == 0) break;
 
+    // Tampilkan prompt pemilihan bidak
+    var selectedPieceLabel = AnsiConsole.Prompt(
+        new SelectionPrompt<string>()
+            .Title($"\n[bold {currentTurn}]Select piece to move:[/]")
+            .PageSize(10)
+            .HighlightStyle(new Style(foreground: Color.Green))
+            .AddChoices(movablePieces.Keys)
+    );
+
+    // Ambil bidak berdasarkan pilihan pemain
+    var piece = movablePieces[selectedPieceLabel];
     var validMoves = piece.GetValidMoves(board);
-    if (validMoves.Count == 0)
-    {
-        Console.WriteLine("No valid moves for this piece. Press any key...");
-        Console.ReadKey();
-        continue;
-    }
 
+    // ==========================================
+    // TAHAP 2: PEMILIHAN TUJUAN (TO)
+    // ==========================================
+    // Render ulang papan dengan highlight petak tujuan
     Console.Clear();
     gameService.GetDrawBoard(board, validMoves);
-    Console.WriteLine($"\nSelected: {piece.Color} {piece.Symbol}");
-    Console.WriteLine("Enter destination (row col, or 'x' to cancel):");
-    Console.Write("> ");
 
-    var toInput = Console.ReadLine();
-    if (string.IsNullOrWhiteSpace(toInput) || toInput.Trim().ToLower() == "x")
-        continue;
+    var moveOptions = new Dictionary<string, Tile>();
+    var moveLabels = new List<string> { "🔙 Cancel / Back" }; 
 
-    var toParts = toInput.Split(' ');
-    if (toParts.Length != 2 ||
-        !int.TryParse(toParts[0], out int toRow) ||
-        !int.TryParse(toParts[1], out int toCol))
+    foreach (var tile in validMoves)
     {
-        Console.WriteLine("Invalid input. Press any key...");
-        Console.ReadKey();
-        continue;
+        // Konversi tujuan ke format Catur
+        char destCol = (char)('A' + tile.Column);
+        int destRow = 8 - tile.Row;
+
+        string label = tile.Piece != null
+            ? $"⚔️ Capture {GameHelper.GetPieceSymbol(tile.Piece)} {tile.Piece.Symbol} at {destCol}{destRow}"
+            : $"➡️ Move to {destCol}{destRow}";
+        
+        moveOptions[label] = tile;
+        moveLabels.Add(label);
     }
 
-    var fromTile = BoardHelper.GetTile(board, fromRow, fromCol);
-    var toTile = BoardHelper.GetTile(board, toRow, toCol);
+    // Tampilkan prompt pemilihan tujuan
+    var selectedMoveLabel = AnsiConsole.Prompt(
+        new SelectionPrompt<string>()
+            .Title($"\nSelected: [bold yellow]{GameHelper.GetPieceSymbol(piece)} {piece.Symbol}[/]. Choose destination:")
+            .PageSize(10)
+            .HighlightStyle(new Style(foreground: Color.Cyan1))
+            .AddChoices(moveLabels)
+    );
 
-    if (fromTile == null || toTile == null)
+    // Jika user memilih Cancel, ulangi loop dari awal
+    if (selectedMoveLabel == "🔙 Cancel / Back")
     {
-        Console.WriteLine("Invalid position. Press any key...");
-        Console.ReadKey();
-        continue;
+        continue; 
     }
 
-    if (!MovementService.MoveIsValid(board, fromTile, toTile))
-    {
-        Console.WriteLine("Invalid move. Press any key...");
-        Console.ReadKey();
-        continue;
-    }
+    // Dapatkan Tile asal dan tujuan berdasarkan pilihan
+    var fromTile = BoardHelper.GetTile(board, piece.CurrentLocation.Row, piece.CurrentLocation.Column);
+    var toTile = moveOptions[selectedMoveLabel];
 
-    MovementHelper.MovePiece(board, fromTile, toTile, promotionTile =>
+    // ==========================================
+    // TAHAP 3: EKSEKUSI PERGERAKAN
+    // ==========================================
+    MovementHelper.MovePiece(board, fromTile!, toTile, promotionTile =>
     {
-        // Tampilkan papan terlebih dahulu agar user bisa melihat posisi pawn
         Console.Clear();
         gameService.GetDrawBoard(board);
 
-        // Prompt pilihan promosi menggunakan Spectre.Console
         var choice = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title($"\n[bold yellow]♟ PROMOTION![/] " +
-                       $"[bold]{fromTile.Piece?.Color}[/] Pawn mencapai baris akhir!\n" +
+                       $"[bold]{fromTile!.Piece?.Color}[/] Pawn mencapai baris akhir!\n" +
                        "Pilih piece untuk promosi:")
                 .AddChoices(
                     "♕ Queen",
@@ -141,15 +155,16 @@ while (!isGameOver)
             "♖ Rook"   => PieceType.Rook,
             "♗ Bishop" => PieceType.Bishop,
             "♘ Knight" => PieceType.Knight,
-            _           => PieceType.Queen   // fallback (tidak akan terjadi)
+            _           => PieceType.Queen  
         };
 
         MovementHelper.Promote(promotionTile, chosenType);
-
-        AnsiConsole.MarkupLine(
-            $"[green]Pawn berhasil dipromosikan menjadi [bold]{chosenType}[/]![/]");
+        AnsiConsole.MarkupLine($"[green]Pawn berhasil dipromosikan menjadi [bold]{chosenType}[/]![/]");
     });
 
+    // ==========================================
+    // TAHAP 4: PERGANTIAN GILIRAN & CEK STATUS
+    // ==========================================
     timerService.SwitchTurn();
     currentTurn = currentTurn == PieceColor.White ? PieceColor.Black : PieceColor.White;
 
