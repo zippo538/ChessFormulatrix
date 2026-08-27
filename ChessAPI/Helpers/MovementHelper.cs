@@ -90,7 +90,8 @@ public class MovementHelper
         board.MoveStack.Push(new MoveHistory(
             new BoardLocation(from.Row, from.Column),
             new BoardLocation(to.Row, to.Column),
-            capturedPiece! // Boleh null, ditangani oleh MoveHistory
+            capturedPiece!,
+            movedPiece// Boleh null, ditangani oleh MoveHistory
         ));
 
         // 2. Pindahkan bidak ke petak tujuan

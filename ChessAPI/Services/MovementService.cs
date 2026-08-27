@@ -344,6 +344,41 @@ public static class MovementService
             1,
             validMoves);
         
+        // en Passant move
+
+        if (board.MoveStack.Count > 0)
+        {
+            var lastMove = board.MoveStack.Peek();
+            
+            // 1. Cek apakah langkah terakhir adalah lompatan pion 2 kotak
+            if (Math.Abs(lastMove.From.Row - lastMove.To.Row) == 2)
+            {
+                var lastMoveTile = BoardHelper.GetTile(board, lastMove.To.Row, lastMove.To.Column);
+                
+                // 2. Cek apakah itu pion lawan
+                if (lastMoveTile?.Piece != null && 
+                    lastMoveTile.Piece.Symbol == PieceType.Pawn &&
+                    lastMoveTile.Piece.Color != pawn.Color)
+                {
+                    // 3. Cek apakah posisi kolom bersebelahan dengan pion kita
+                    if (lastMove.To.Row == pawn.CurrentLocation.Row &&
+                        Math.Abs(lastMove.To.Column - pawn.CurrentLocation.Column) == 1)
+                    {
+                        int epRow = pawn.CurrentLocation.Row + direction;
+                        int epCol = lastMove.To.Column;
+
+                        if (BoardHelper.IsInBounds(board, epRow, epCol))
+                        {
+                            var epTile = BoardHelper.GetTile(board, epRow, epCol);
+                            if (epTile != null)
+                            {
+                                validMoves.Add(epTile);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return validMoves;
     }
 

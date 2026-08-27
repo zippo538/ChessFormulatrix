@@ -9,19 +9,40 @@ Board board = new();
 GameService gameService = new GameService();
 BoardService.InitializeBoard(board);
 TimerService timerService = new TimerService(TimeSpan.FromMinutes(10));
+ChessDotNetService botService = new ChessDotNetService();
 
 // White Turn
 PieceColor currentTurn = PieceColor.White;
 bool isGameOver = false;
 string? gameResult = null;
 
+Console.Clear();
+var titleFiglet = new FigletText("CHESS CONSOLE")
+{
+    Justification = Justify.Center
+}.Color(Color.Yellow);
+AnsiConsole.Write(titleFiglet);
+
+// ==========================================
+// PILIH MODE PERMAINAN
+// ==========================================
+var modeChoice = AnsiConsole.Prompt(
+    new SelectionPrompt<string>()
+        .Title("\n[bold yellow]Pilih Mode Permainan:[/]")
+        .PageSize(5)
+        .HighlightStyle(new Style(foreground: Color.Green))
+        .AddChoices(
+            "🎮 1. Player vs Player",
+            "🤖 2. Player vs Bot"
+        )
+);
+
+bool isVsBot = modeChoice.Contains("Bot");
+PieceColor botColor = PieceColor.Black; // Bot secara default bermain sebagai Hitam (Black)
+
 
 // start timer
 timerService.Start();
-
-// ==========================================
-// LIVE TIMER 
-// ==========================================
 GameHelper.StartLiveTitleTimer(timerService);
 
 timerService.TimeExpired += color =>
@@ -31,11 +52,10 @@ timerService.TimeExpired += color =>
                  $"{GameHelper.GetOpponent(color)} wins!";
 };
 
-
 AnsiConsole.MarkupLine("[bold yellow]Chess Console[/]\n");
 while (!isGameOver)
 {
-    GameService.RenderBoard(board, timerService,currentTurn);
+    GameService.RenderBoard(board, currentTurn);
     
 
     if (MovementService.IsKingInCheck(board, currentTurn))
@@ -194,6 +214,10 @@ AnsiConsole.WriteLine(
     $"White: {timerService.WhiteTime:mm\\:ss} | " +
     $"Black: {timerService.BlackTime:mm\\:ss}"
 );
+if (board.MoveStack.Count > 0)
+{
+    GameHelper.HistoryMovePiece(board);
+}
 Console.WriteLine("\nPress any key to exit...");
 Console.ReadKey();
 
